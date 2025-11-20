@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import time
 from openai import OpenAI
 
@@ -11,13 +12,14 @@ client = OpenAI(
     base_url="https://ai-gateway.andrew.cmu.edu/"
 )
 
+DOMAINS = ["finance", "medical", "ecommerce", "climate", "education", "social_media", "real_estate", "transportation", "retail", "manufacturing", "telecommunications", "energy", "agriculture", "government", "entertainment"]
 # ----------------------------
 #  Synthetic Data Prompt
 # ----------------------------
 GEN_PROMPT = """
 You are an expert in data cleaning, dirty data generation, and OpenRefine workflows.
 
-Your job is to generate a NEW synthetic EXAMPLE that imitates the AutoDCWorkflow dataset exactly.
+Your job is to generate a NEW synthetic EXAMPLE in the [DOMAIN] domain that imitates the AutoDCWorkflow dataset exactly.
 
 You MUST return a JSON object with all fields described.
 
@@ -81,13 +83,13 @@ RULES FOR GENERATING THE EXAMPLE:
 # ----------------------------
 #  Generate One Example
 # ----------------------------
-def generate_one_example(retries=3):
+def generate_one_example(domain, retries=3):
     for _ in range(retries):
         try:
             response = client.chat.completions.create(
                 model="gpt-4.1-mini",
                 temperature=0.8,
-                messages=[{"role": "user", "content": GEN_PROMPT}]
+                messages=[{"role": "user", "content": GEN_PROMPT.replace("[DOMAIN]", domain)}]
             )
 
             content = response.choices[0].message.content.strip()
@@ -117,7 +119,9 @@ def generate_synthetic_autodc(n=100, outfile="synthetic_autodc.jsonl"):
 
     with open(outfile, "w") as f:
         for i in range(n):
-            ex = generate_one_example()
+            domain = random.choice(DOMAINS[:5]) # limit to first 5 domains for diversity
+            print(f"Generating example {i+1}/{n} in domain '{domain}'...")
+            ex = generate_one_example(domain=domain)
             if ex is None:
                 print(f"❌ Failed to generate example {i+1}/{n}")
                 continue
@@ -134,4 +138,4 @@ def generate_synthetic_autodc(n=100, outfile="synthetic_autodc.jsonl"):
 #  CLI
 # ----------------------------
 if __name__ == "__main__":
-    generate_synthetic_autodc(n=10, outfile="synthetic_autodc.jsonl")
+    generate_synthetic_autodc(n=1, outfile="synthetic_autodc.jsonl")
